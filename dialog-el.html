@@ -3,7 +3,7 @@
     * {
       box-sizing: border-box;
     }
-    
+
     :host {
       position: absolute;
       display: inline-block;
@@ -12,7 +12,7 @@
     :host([hidden]) {
       display: none !important;
     }
-    
+
     .content {
       background: #FFFFFF;
       background: var(--dialog-el-background, #FFFFFF);
@@ -28,7 +28,7 @@
       -webkit-transition: transform 0.3s, opacity 0.3s;
       transition: transform 0.3s, opacity 0.3s;
     }
-    
+
     :host([modal]) > .overlay > .content {
       left:50%;
       position: fixed;
@@ -36,7 +36,7 @@
       -webkit-transform: translate(-50%, -50%) scale(0.7);
       transform: translate(-50%, -50%) scale(0.7);
     }
-    
+
     .overlay {
       background: rgba(51, 51, 51, 0.8);
       height: 100%;
@@ -48,17 +48,17 @@
       transition: opacity 0.3s;
       width:100%;
     }
-    
+
     :host([visible]) > .content {
       opacity: 1;
       transform: scale(1.0);
     }
-    
+
     :host([modal][visible]) > .overlay > .content {
       opacity: 1;
       transform: translate3d(-50%, -50%, 0) scale(1.0);
     }
-    
+
     :host([visible]) > .overlay {
       opacity: 1;
     }
@@ -107,7 +107,7 @@
 <template id='modal'>
   <div class='overlay'>
     <div class="content">
-      <content></content>
+      <slot></slot>
     </div>
   </div>
 </template>
@@ -115,7 +115,7 @@
 <template id='dialog'>
   <div class="content">
     <div class='pointer'></div>
-    <content></content>
+    <slot></slot>
   </div>
 </template>
 
@@ -128,6 +128,27 @@
         this.name = 'dialog-el';
       }
     }
+    // function loadScript(src) {
+    //   return new Promise(function(resolve, reject) {
+    //     const script = document.createElement('script');
+    //     script.async = true;
+    //     script.src = src;
+    //     script.onload = resolve;
+    //     script.onerror = reject;
+    //     document.head.appendChild(script);
+    //   });
+    // }
+    const supportsShadowDOMV1 = !!HTMLElement.prototype.attachShadow;
+    //
+    // // Lazy load the polyfill if necessary.
+    // if (!supportsShadowDOMV1) {
+    //   loadScript('../shadydom/shadydom.min.js')
+    //     .then(e => loadScript('../shadycss/shadycss.min.js'))
+    //     .then(e => {
+    //       // Polyfills loaded.
+    //     });
+    // }
+
 
     // Master dialog stack, we use this to compute z-indexes as well as
     // know which dialogs/modals to close on a click event in the DOM
@@ -169,8 +190,8 @@
         let root;
         const path = e.path || (e.composedPath && e.composedPath());
         if (path) {
-          root = path[0];  
-        } 
+          root = path[0];
+        }
         root = root || e.srcElement
 
         root.dispatchEvent(evt);
@@ -194,7 +215,7 @@
 
       // All naturally focusable elements
       const focusableElementsSelectors = [
-        'a[href]', 
+        'a[href]',
         'area[href]',
         'input:not([disabled])',
         'select:not([disabled])',
@@ -212,7 +233,7 @@
 
       // NodeList of all focusable elements under a given node
       const focusableElements = node.querySelectorAll(focusableElementsSelectors);
-      
+
       return Array.from(focusableElements).filter(child => {
         return !!(child.offsetWidth || child.offsetHeight || child.getClientRects().length);
       });
@@ -222,13 +243,13 @@
     const trapTabKey = (node, event) => {
       if (!(node instanceof HTMLElement)) throw new DialogElError('HTMLElement not passed to `trapTabKey`');
       if (!(event instanceof Event)) throw new DialogElError('Event not passed to `trapTabKey`');
-      
+
       const focusableChildren = getFocusableChildren(node);
 
       // This line is required due to how the Shadow DOM polyfill wraps elements
       // (See: https://github.com/webcomponents/webcomponentsjs#element-wrapping--unwrapping-limitations-)
-      const activeElement = window.ShadowDOMPolyfill && 
-                            (window.ShadowDOMPolyfill.wrap ? window.ShadowDOMPolyfill.wrap(document.activeElement) : 
+      const activeElement = window.ShadowDOMPolyfill &&
+                            (window.ShadowDOMPolyfill.wrap ? window.ShadowDOMPolyfill.wrap(document.activeElement) :
                                                              document.activeElement);
 
       // If there are no focusable children in the dialog, prevent tabbing through the rest
@@ -259,7 +280,7 @@
      */
     const getCoords = function(elem) {
       if (!(elem instanceof HTMLElement)) throw new DialogElError('HTMLElement not passed to `getCoords`');
-      
+
       const boundingRect = elem.getBoundingClientRect();
 
       const docEl = document.documentElement;
@@ -273,9 +294,9 @@
       const top  = boundingRect.top + scrollTop - clientTop;
       const left = boundingRect.left + scrollLeft - clientLeft;
 
-      return { 
-        top: Math.round(top), 
-        left: Math.round(left) 
+      return {
+        top: Math.round(top),
+        left: Math.round(left)
       };
     };
 
@@ -305,16 +326,27 @@
     const dialogTemplate = querySelector('#dialog');
     const modalTemplate = querySelector('#modal');
 
+
+    window.ShadyCSS && ShadyCSS.prepareTemplate(styleTemplate, 'dialog-el')
+
     class DialogEl extends HTMLElement {
       constructor() {
         super();
+
+        // Initial Style/A11y Setup
+        this.hidden = true;
+        this.visible = false;
+        this.setAttribute('aria-hidden', 'true');
+        this.setAttribute('role', 'dialog');
+
+        this._templateInit();
       }
 
       /**
        * Visible status for the modal
        * @public
        * @property {boolean} visible
-       */ 
+       */
       get visible() {
         const definedIsVisible = this.__visible !== undefined;
         return definedIsVisible ? this.__visible : (this.__visible = this.hasAttribute('visible'));
@@ -334,7 +366,7 @@
        * as a modal
        * @public
        * @property {boolean} modal
-       */ 
+       */
       get modal() {
         const definedIsModal = this.__modal !== undefined;
         return definedIsModal ? this.__modal : (this.__modal = this.hasAttribute('modal'));
@@ -354,10 +386,10 @@
        * on the dialog
        * @public
        * @property {string} arrowDirection
-       */ 
+       */
       get arrowDirection() {
         const definedArrowDirection = this.__arrowDirection !== undefined;
-        return definedArrowDirection ? this.__arrowDirection : 
+        return definedArrowDirection ? this.__arrowDirection :
                                        (this.__arrowDirection = this.getAttribute('arrow-direction'));
       }
       set arrowDirection(val) {
@@ -377,7 +409,7 @@
        * on the dialog
        * @private
        * @property {HTMLElement} _content
-       */ 
+       */
       get _content() {
         return this.__contentNode || (this.__contentNode = this.shadowRoot.querySelector('.content'));
       }
@@ -387,7 +419,7 @@
        * on the dialog
        * @private
        * @property {HTMLElement} _overlay
-       */ 
+       */
       get _overlay() {
         return this.__overlayNode || (this.__overlayNode = this.shadowRoot.querySelector('.overlay'));
       }
@@ -398,31 +430,18 @@
 
         // If there is already a shadowRoot, clear it to stamp a clean template
         if (this.shadowRoot) {
-          while (this.shadowRoot.lastChild) { 
-            this.shadowRoot.removeChild(this.shadowRoot.lastChild) 
+          while (this.shadowRoot.lastChild) {
+            this.shadowRoot.removeChild(this.shadowRoot.lastChild)
           }
         }
 
+        window.ShadyCSS && ShadyCSS.styleElement(this)
+
         // Create or reference an empty shadowRoot and append the style and dialogTemplate
-        const root = this.shadowRoot || this.createShadowRoot();
+        const root = this.shadowRoot || this.attachShadow({mode: 'open'});
         root.appendChild(style);
         root.appendChild(template);
 
-        // If we have the full Shadow DOM polyfill and haven't instantiated
-        // an instance of this component once
-        if (window.WebComponents && window.WebComponents.ShadowCSS && window.WebComponents.ShadowCSS.shimStyling) {
-          window.WebComponents.ShadowCSS.shimStyling(this.shadowRoot, 'dialog-el');
-        }
-      }
-
-      createdCallback() {
-        // Initial Style/A11y Setup
-        this.hidden = true;
-        this.visible = false;
-        this.setAttribute('aria-hidden', 'true');
-        this.setAttribute('role', 'dialog');
-
-        this._templateInit();
       }
 
       attributeChangedCallback(attr) {
@@ -472,25 +491,25 @@
           };
 
           quadrant = directionQuadrantMap[this.getAttribute('arrow-direction')];
-          
+
           const arrowSize = 22;
           this._resetPosition();
           const anchorCoords = this._computeCoords(anchor);
 
           switch (quadrant) {
-            case 0: 
+            case 0:
               this.style.top = (anchorCoords.top - this.offsetHeight - arrowSize / 2) + 'px';
               this.style.left = (anchorCoords.left + anchor.offsetWidth / 2 - this.offsetWidth / 2) + 'px';
               break;
-            case 1: 
+            case 1:
               this.style.top = (anchorCoords.top + anchor.offsetHeight / 2 - this.offsetHeight / 2) + 'px';
               this.style.left = (anchorCoords.left + anchor.offsetWidth + arrowSize) + 'px';
               break;
-            case 2: 
+            case 2:
               this.style.top = (anchorCoords.top + anchor.offsetHeight / 2 - this.offsetHeight / 2) + 'px';
               this.style.left = (anchorCoords.left - this.offsetWidth - arrowSize) + 'px';
               break;
-            case 3: 
+            case 3:
               this.style.top = (anchorCoords.top + anchor.offsetHeight + arrowSize) + 'px';
               this.style.left = (anchorCoords.left + anchor.offsetWidth / 2 - this.offsetWidth / 2) + 'px';
               break;
@@ -511,22 +530,22 @@
           if (anchorY >= screenYCenter) quadrant += 2;
 
           const anchorCoords = this._computeCoords(anchor);
-          // Position the dialog, relative to the `anchor` in the appropriate 
+          // Position the dialog, relative to the `anchor` in the appropriate
           // quadrant
           switch (quadrant) {
-            case 0: 
+            case 0:
               this.style.top = (anchorCoords.top + anchor.offsetHeight) + 'px';
               this.style.left = (anchorCoords.left + anchor.offsetWidth) + 'px';
               break;
-            case 1: 
+            case 1:
               this.style.top = (anchorCoords.top + anchor.offsetHeight) + 'px';
               this.style.left = (anchorCoords.left - this.offsetWidth) + 'px';
               break;
-            case 2: 
+            case 2:
               this.style.top = (anchorCoords.top - this.offsetHeight) + 'px';
               this.style.left = (anchorCoords.left + anchor.offsetWidth) + 'px';
               break;
-            case 3: 
+            case 3:
               this.style.top = (anchorCoords.top - this.offsetHeight) + 'px';
               this.style.left = (anchorCoords.left - this.offsetWidth) + 'px';
               break;
@@ -568,7 +587,7 @@
           this.positionDialog(anchor);
         })
         .then(() => {
-          // Transition the elements out and resolve when the 
+          // Transition the elements out and resolve when the
           // animation has completed
           const event = 'transitionend';
           return new Promise((resolve, reject) => {
@@ -783,7 +802,7 @@
       };
     }
 
-    document.registerElement('dialog-el', DialogEl);
+    customElements.define('dialog-el', DialogEl);
 
   })(document, HTMLElement)
 </script>

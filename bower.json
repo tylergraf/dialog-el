@@ -25,7 +25,9 @@
     "tests"
   ],
   "dependencies": {
-    "webcomponentsjs": "webcomponents/webcomponentsjs#v1.0.0-rc.10",
-    "promise-polyfill": "taylorhakes/promise-polyfill#^6.0.1"
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.20",
+    "promise-polyfill": "taylorhakes/promise-polyfill#^6.0.1",
+    "shadydom": "webcomponents/shadydom#^1.0.9",
+    "shadycss": "webcomponents/shadycss#^1.1.0"
   }
 }
